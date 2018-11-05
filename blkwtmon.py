@@ -38,8 +38,8 @@ Usage:
     LOG_NAME:           where to save the log
 
 Example:
-    python blkwtmon mmcblk 60 test.csv
-    will read sector write request counter to mmcblk every minute and save to test.csv
+    python blkwtmon mmcblk0 60 /var/log/mmc0.csv
+    will record mmcblk0's sector writes per minute to /var/log/mmc0.csv
 ===============================================================================================
 '''
     else :

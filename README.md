@@ -7,6 +7,6 @@ See https://www.kernel.org/doc/Documentation/block/stat.txt for details.
 The sector is not the physical sector of the block device.
 
 # usage
-python blkwtmon.py mmcblk 60 test.csv
+python blkwtmon.py mmcblk0 60 /var/log/test.csv
 
 
