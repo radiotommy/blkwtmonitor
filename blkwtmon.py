@@ -2,6 +2,7 @@
 import os
 import time
 import sys
+import logging
 from datetime import datetime
 
 def read_state (blkdev) :
@@ -13,49 +14,62 @@ def read_state (blkdev) :
 
     return dict(zip(cols, stat))
 
-def log_sector_writes (blkdev, logname, last_reading):
-    stat = read_state(devname)
-    wt_sects = int(stat['write_sectors'])
-    delt = wt_sects - last_reading
-    date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+def read_write_requests (blkdev) :
+    stat = read_state (blkdev)
+    return int(stat['write_sectors'])
 
-    rec = '%s,%d,%d' % (date, wt_sects, delt)
-    f = open(logname, 'a')
-    f.write(rec + '\n')
-    f.close()
-    return rec, wt_sects
+def time_diff_day_and_minutes (tm_start, tm_end) :
+    diff = tm_end - tm_start
+    minutes = diff.seconds / 60.0
+    if (diff.days < 1) :
+        msg = ('%.3f minutes' % minutes)
+    else :
+        msg = ('%d days and %.3f minutes' % (diff.days, minutes))
+    return msg
+
 
 if __name__ == '__main__':
 
-    if len(sys.argv) < 4 :
+    if len(sys.argv) < 3 :
         print '''
-===============================================================================================
+=================================================================================================================
 Usage:
-    python blkwtmon.py BLOCK_DEVICE_NAME INTERVAL LOG_NAME
+    python blkwtmon.py BLOCK_DEVICE_NAME INTERVAL
 
     BLOCK_DEVICE_NAME:  the block device name monitor on
     INTERVAL:           check interval in seconds
-    LOG_NAME:           where to save the log
 
 Example:
-    python blkwtmon mmcblk0 60 /var/log/mmc0.csv
-    will record mmcblk0's sector writes per minute to /var/log/mmc0.csv
-===============================================================================================
+    python blkwtmon mmcblk0 60
+    will check mmcblk0's sector write counter every minute, and same the report to /var/log/blkwtmon-mmcblk0.csv
+=================================================================================================================
 '''
     else :
         devname = sys.argv[1]
         interval = int(sys.argv[2])
-        logname = sys.argv[3]
 
-        print 'Monitor block device %s sector writing every %d seconds' % (devname, interval)
-        stat = read_state(devname)
-        last_reading = int(stat['write_sectors'])
+        logname = os.path.join('/var/log', 'blkwtmon-' + devname + '.log')
+        logging.basicConfig( filename = logname, format = '%(asctime)s ---- %(message)s', level = logging.INFO)
+
+        time_start = datetime.now()
+        logging.info('sector write request counter logging start')
+        
+        wt_at_start = read_write_requests(devname)
+        wt_last_log = wt_at_start
 
         while(1) :
             time.sleep(interval)
-            stat = read_state(devname)
-            rec, wt_sects = log_sector_writes(devname, logname, last_reading)
+            wt_sects = read_write_requests(devname)
 
-            print rec
-            last_reading = wt_sects
+            now = datetime.now()
+            since_last = wt_sects - wt_last_log 
+            since_start = wt_sects - wt_at_start
+
+            msg = '%d in last %d seconds' % (since_last, interval) 
+            msg += ' ---- %d in last %s' % (since_start, time_diff_day_and_minutes(time_start, now))
+
+            logging.info(msg)
+            print msg
+            wt_last_log = wt_sects;
+
 
